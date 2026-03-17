@@ -1,0 +1,396 @@
+{
+  "name": "customer support workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "simple": false,
+        "filters": {},
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -48,
+        0
+      ],
+      "id": "623ba211-1e28-45a2-a855-64ba52e02096",
+      "name": "Gmail Trigger",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "okYFWzqQkVOci0Um",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "inputText": "={{ $json.text }}",
+        "categories": {
+          "categories": [
+            {
+              "category": "Customer Support",
+              "description": "any emails that are related to helping out a customer. customer may ask questions about our policy questions about product or services"
+            },
+            {
+              "category": "Others",
+              "description": "any email that is not customer support related"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.textClassifier",
+      "typeVersion": 1.1,
+      "position": [
+        176,
+        0
+      ],
+      "id": "16e0fee9-acaa-44a3-92e6-798deed48395",
+      "name": "Text Classifier"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "id",
+          "value": "gpt-4o-mini"
+        },
+        "responsesApiEnabled": false,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        176,
+        144
+      ],
+      "id": "f80cee33-8043-4790-be62-93804e39fefe",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "IModnrCcB7szzSNs",
+          "name": "OpenAi account 2"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        416,
+        240
+      ],
+      "id": "d32e065b-4a30-4a39-a272-6759c0f1303e",
+      "name": "No Operation, do nothing"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $('Gmail Trigger').item.json.text }}",
+        "options": {
+          "systemMessage": "=# Overview\nyou are a customer support agent for Tech Haven. Your job is to respond to incoming emails with relavent information using your knowledge tool.\n\n## Instruction \n- your output should be friendly and use emojis\n- Sign off as Mr. Helpful from Tech Haven Solutions.\n\n## output\n- output only the body content of the email."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        608,
+        -16
+      ],
+      "id": "a0cece84-dd37-4968-88f7-20816f564639",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4",
+          "mode": "list",
+          "cachedResultName": "gpt-4"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        608,
+        144
+      ],
+      "id": "ddb8d2d0-d727-4170-9bfe-e0c7ad8457cc",
+      "name": "OpenAI Chat Model1",
+      "credentials": {
+        "openAiApi": {
+          "id": "IModnrCcB7szzSNs",
+          "name": "OpenAi account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolDescription": "call this tool to access policy and FAQs information",
+        "pineconeIndex": {
+          "__rl": true,
+          "value": "ragchatbot",
+          "mode": "list",
+          "cachedResultName": "ragchatbot"
+        },
+        "options": {
+          "pineconeNamespace": "FAQs"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStorePinecone",
+      "typeVersion": 1.3,
+      "position": [
+        752,
+        192
+      ],
+      "id": "7da0e8ea-6093-4fdf-ab2b-03055f84c30e",
+      "name": "Pinecone Vector Store",
+      "credentials": {
+        "pineconeApi": {
+          "id": "ohtT2NF2vrppLfyQ",
+          "name": "ragchatbot pinecone"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {
+          "dimensions": 512
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        752,
+        320
+      ],
+      "id": "c423e08c-ae0d-4d5d-a48c-d7b546d08749",
+      "name": "Embeddings OpenAI",
+      "credentials": {
+        "openAiApi": {
+          "id": "IModnrCcB7szzSNs",
+          "name": "OpenAi account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "reply",
+        "messageId": "={{ $('Gmail Trigger').item.json.id }}",
+        "emailType": "text",
+        "message": "={{ $json.output }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1088,
+        -16
+      ],
+      "id": "a57bef50-2162-4f2f-929e-89e271b88d33",
+      "name": "Reply to a message",
+      "webhookId": "46db9db2-7108-488c-a50d-12652dd1cb6b",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "okYFWzqQkVOci0Um",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## CUSTOMER SUPPORT WORKFLOW",
+        "height": 80,
+        "width": 432,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        352,
+        -160
+      ],
+      "id": "fcfdcc7b-1e6c-45fc-9fcf-3bbb11f86017",
+      "name": "Sticky Note"
+    }
+  ],
+  "pinData": {
+    "Gmail Trigger": [
+      {
+        "json": {
+          "id": "19ce7523684cb551",
+          "threadId": "19ce7523684cb551",
+          "labelIds": [
+            "UNREAD",
+            "INBOX"
+          ],
+          "sizeEstimate": 7054,
+          "headers": {
+            "delivered-to": "Delivered-To: rubabbatool20030202@gmail.com",
+            "received": "Received: from mail-sor-f65.google.com (mail-sor-f65.google.com. [209.85.220.65])\r\n        by mx.google.com with SMTPS id 956f58d0204a3-64d650b9498sor4190754d50.7.2026.03.13.06.10.50\r\n        for <rubabbatool20030202@gmail.com>\r\n        (Google Transport Security);\r\n        Fri, 13 Mar 2026 06:10:50 -0700 (PDT)",
+            "x-received": "X-Received: by 2002:a53:e947:0:b0:64c:f1cc:6308 with SMTP id\r\n 956f58d0204a3-64e63046cd4mr2447436d50.54.1773407450078; Fri, 13 Mar 2026\r\n 06:10:50 -0700 (PDT)",
+            "arc-seal": "ARC-Seal: i=1; a=rsa-sha256; t=1773407450; cv=none;\r\n        d=google.com; s=arc-20240605;\r\n        b=W8Rbmv2tbSAjmSM+cKvo0vfkyvwcGOlMAh2H/ZoOwI7MzYVmLzotiM5SMtCNwi3zpZ\r\n         hKp+f1b4C3OScGgVV97voAHAH5tZ+1Dr8z138NCphDF872+FY1XTwwUUGUUvdve6kZzd\r\n         Pyj2ylSiBBvFfG+Uy0K0p/ZSen+WEexpgAWK42hFHgZbtLoVsclKdZR6MUxNEtOasucI\r\n         GiNG5Bohpi2dXzFu5fU4MfmVjgtX8aP6YgnnL7o1UpIK63rZSCQAiHMqqYoWYjj/0upf\r\n         3mNGuaKIdq2TcsSyTQWU7Q0q33IdjG0qmxspJHDO550+Oh4ZOIH3K53uGgSfwQEjZjFB\r\n         udhQ==",
+            "arc-message-signature": "ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20240605;\r\n        h=to:subject:message-id:date:from:mime-version:dkim-signature;\r\n        bh=m6y390nwSCeSlpQ2gi2YhATEG0H7Y+XVSTgHzoIBePI=;\r\n        fh=gZQg22M15TrkcN5XDC89eogxMIn/gIK1ZJJTzNjOR8U=;\r\n        b=OpzT8DI0rzyQ3j8BPjPh7B3Tc46DAOUqnY8z+y7kOGsoRlNj7Z2M3wTG4D8cvb8dxs\r\n         NU7ZZFj1W/iYO3CqVRhy6JJIqIpCqHCT0jmo5wjrk/Pd/SLHMDxTUuSylcKsy5aVSaZZ\r\n         tDynkyDF3mtT1vCIuC6je5Vox4C72qY63WunBe2H7cfLdSDi5Ddueb0jJjTxyVNhUa5Q\r\n         eXg23SALlbv6zL8/4zCvUOfkuw+QAHFl4TC4yZ+x1M5ECZsl7VgPnFG6pwFaj56rlMHU\r\n         qmnEXTS+E1LYfO9UfpheFfUmC3BQBX2SFhVOdADsu3BWe3ckRnpzmqvUObVVJA2nb7TI\r\n         +VbQ==;\r\n        dara=google.com",
+            "arc-authentication-results": "ARC-Authentication-Results: i=1; mx.google.com; arc=none",
+            "return-path": "Return-Path: <naeemtaahir22@gmail.com>",
+            "received-spf": "Received-SPF: pass (google.com: domain of naeemtaahir22@gmail.com designates 209.85.220.65 as permitted sender) client-ip=209.85.220.65;",
+            "authentication-results": "Authentication-Results: mx.google.com;\r\n       dkim=pass header.i=@gmail.com header.s=20230601 header.b=KfSLit3j;\r\n       arc=pass (i=1);\r\n       spf=pass (google.com: domain of naeemtaahir22@gmail.com designates 209.85.220.65 as permitted sender) smtp.mailfrom=naeemtaahir22@gmail.com;\r\n       dmarc=pass (p=NONE sp=QUARANTINE dis=NONE) header.from=gmail.com;\r\n       dara=pass header.i=@gmail.com",
+            "dkim-signature": "DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;\r\n        d=gmail.com; s=20230601; t=1773407450; x=1774012250; dara=google.com;\r\n        h=to:subject:message-id:date:from:mime-version:from:to:cc:subject\r\n         :date:message-id:reply-to;\r\n        bh=m6y390nwSCeSlpQ2gi2YhATEG0H7Y+XVSTgHzoIBePI=;\r\n        b=KfSLit3jGvIrta04UNLTimHrSwsc3Lli4raHJRGwNj828iXLKeFH4/bJdi89WQzY+l\r\n         SWiDjs8fvxnnOZMhFD4aLKon2hMJBYiYhBuz58LRXm2sDE4+ce0Z/zHDuSHR1dKWHl14\r\n         2fsPRr/MZb66supV0QBN4c8/mu+UcNAUkzhcUyEVs/B43ePyhsak5U4hD2ZBK4CcoX0r\r\n         sgg65qBVkARert5nTOk3YhntXE/glxHqQeBPLlC2+AOpHonMOAUwxvPddD652oagPcbV\r\n         hh6Rp6hsc0EEJgW3r8zTGlfTYWnjqVpSK7VVVmZQt6jYl0GarPXlFppLavxi7hhjCsj6\r\n         2QHQ==",
+            "x-google-dkim-signature": "X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;\r\n        d=1e100.net; s=20251104; t=1773407450; x=1774012250;\r\n        h=to:subject:message-id:date:from:mime-version:x-gm-gg\r\n         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;\r\n        bh=m6y390nwSCeSlpQ2gi2YhATEG0H7Y+XVSTgHzoIBePI=;\r\n        b=Ct0BAZ4zkms36g3uriFmEa2awdil2t+jhwUR2A+sC+FiUW5sFuhJiKLajo8FCUaFjC\r\n         X49ZPVBVEOyD2eevocH9d9w0mSxubnEnkW7WxHH0+SnxHrOob+coa2hvWpMW23+ZUUIW\r\n         EApGrt7pOeznnUaFl0m6czAq/1AGNgAZaWSuShMdnMm2JwyhoWlLyUqFIYsXYER106M0\r\n         m32c5jSgAVGG3fms3spA1mzf7KqU1nu+dRT3AnnTEe/v6i5gtLhrjjWsirm4Wamklp9M\r\n         vF4xtPgYkUl5hPrL+b7IBFuqe4ecV4hkoCjt2DE1Blz1uYBS7hONQRmZxNakwjllsGpB\r\n         L+Dw==",
+            "x-gm-message-state": "X-Gm-Message-State: AOJu0Yxgwc+vOgvk3Dq26CLP6Lzabne/i1T2wlKCy8k8HLTZMmD6JZg/\r\n\tvlbM0vssWIe94UKxtWOmz9aagyP+PYiyQ2MjW8+1oc4g4Y3WWVPLQBzHD1g3n0NgOVOGMaGk7JF\r\n\tRkkVPryC/0Dp+x+oRJOJszzqdUhd66n0zOpfRx5TLFg==",
+            "x-gm-gg": "X-Gm-Gg: ATEYQzxog85/q2HtzxsHRcui29X4f2v+jZVReK0pBVDwL+yzyg/A+UE5C0begmqW+mb\r\n\tAsLY2cYrYq9MM9btum1HdHCjLk1zdwfVbF+m1Cp437ONUNqggLLoqtKXEKsmFaA2W+ygc7dkZR+\r\n\tctNB9vOSdqsRKRzt4MGoagz6gPe2MQTgIDczNZ9UBZ9A+tyMBhke6Yjw2sSfwkFjHsW96TTMLLE\r\n\tyIIwFaiiM61a0kRNpSqjtW2dEAcFx+Ulf+SFrL0AXhzNmDzjvVLzyzLFgJARV/vCnbl6/I+LRd/\r\n\tFm1FzO76h9mmwRnwHuWLFAQ=",
+            "mime-version": "MIME-Version: 1.0",
+            "from": "From: Tahir Naeem <naeemtaahir22@gmail.com>",
+            "date": "Date: Fri, 13 Mar 2026 18:10:38 +0500",
+            "x-gm-features": "X-Gm-Features: AaiRm52u-ZaZb7YcIG-SrNpZ0WHabjz-uDYjoJMmoUDrGeM0DMVHekrLHToNFZ0",
+            "message-id": "Message-ID: <CALPjfeNNRXKUJLTLFME9yUr=gMkS=oP0REBPROLF0nqkxp4i5w@mail.gmail.com>",
+            "subject": "Subject: Query Related Refund Policy",
+            "to": "To: \"rubabbatool20030202@gmail.com\" <rubabbatool20030202@gmail.com>",
+            "content-type": "Content-Type: multipart/alternative; boundary=\"0000000000001aa1ff064ce7990d\""
+          },
+          "html": "<div dir=\"ltr\">Hi,<div>I want to know about the refund policy.</div></div>\n",
+          "text": "Hi,\nI want to know about the refund policy.\n",
+          "textAsHtml": "<p>Hi,<br/>I want to know about the refund policy.</p>",
+          "subject": "Query Related Refund Policy",
+          "date": "2026-03-13T13:10:38.000Z",
+          "to": {
+            "value": [
+              {
+                "address": "rubabbatool20030202@gmail.com",
+                "name": ""
+              }
+            ],
+            "html": "<span class=\"mp_address_group\"><a href=\"mailto:rubabbatool20030202@gmail.com\" class=\"mp_address_email\">rubabbatool20030202@gmail.com</a></span>",
+            "text": "rubabbatool20030202@gmail.com"
+          },
+          "from": {
+            "value": [
+              {
+                "address": "naeemtaahir22@gmail.com",
+                "name": "Tahir Naeem"
+              }
+            ],
+            "html": "<span class=\"mp_address_group\"><span class=\"mp_address_name\">Tahir Naeem</span> &lt;<a href=\"mailto:naeemtaahir22@gmail.com\" class=\"mp_address_email\">naeemtaahir22@gmail.com</a>&gt;</span>",
+            "text": "\"Tahir Naeem\" <naeemtaahir22@gmail.com>"
+          },
+          "messageId": "<CALPjfeNNRXKUJLTLFME9yUr=gMkS=oP0REBPROLF0nqkxp4i5w@mail.gmail.com>"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Gmail Trigger": {
+      "main": [
+        [
+          {
+            "node": "Text Classifier",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Text Classifier",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Text Classifier": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Operation, do nothing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pinecone Vector Store": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings OpenAI": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Pinecone Vector Store",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Reply to a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "4971a6d1-53be-4a5c-9c91-64bbfe838daf",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "acb9c709bd7f478eb12f1aa76ebad5c76f20ff566c9368578eaa7978165506e7"
+  },
+  "id": "XpmBKj4dpcC3xFX5",
+  "tags": []
+}
